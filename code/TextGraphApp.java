@@ -757,34 +757,6 @@ class DirectedGraph {
         return result;
     }
 
-    private List<String> getIncomingNodes(String node) {
-        List<String> incoming = new ArrayList<>();
-        for (Map.Entry<String, Map<String, Integer>> entry : adjacencyList.entrySet()) {
-            if (entry.getValue().containsKey(node)) {
-                incoming.add(entry.getKey());
-            }
-        }
-        return incoming;
-    }
-
-    private void normalizePageRank(Map<String, Double> pageRank) {
-        double sum = pageRank.values().stream().mapToDouble(Double::doubleValue).sum();
-        if (sum > 0) {
-            for (String node : pageRank.keySet()) {
-                pageRank.put(node, pageRank.get(node) / sum);
-            }
-        }
-    }
-
-    private boolean hasConverged(Map<String, Double> oldRank, Map<String, Double> newRank, double threshold) {
-        for (String node : oldRank.keySet()) {
-            if (Math.abs(oldRank.get(node) - newRank.get(node)) > threshold) {
-                return false;
-            }
-        }
-        return true;
-    }
-
     public Set<String> getAllNodes() {
         Set<String> nodes = new HashSet<>();
         nodes.addAll(adjacencyList.keySet());
