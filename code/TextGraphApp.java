@@ -9,6 +9,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.IntStream;
 import java.util.stream.DoubleStream;
 
+
 public class TextGraphApp {
     private DirectedGraph graph;
     private JFrame frame;
