@@ -9,7 +9,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.IntStream;
 import java.util.stream.DoubleStream;
 
-public class TextGraphApp {
+
+public class Main {
     private DirectedGraph graph;
     private JFrame frame;
     private JTextArea outputArea;
@@ -23,10 +24,20 @@ public class TextGraphApp {
     private Thread randomWalkThread;
     private boolean generatePageRankGraph = false;
 
+    public void initForTest(String filePath) {
+        try {
+            String text = readFile(filePath);
+            List<String> words = processText(text);
+            this.graph = buildGraph(words);
+        } catch (IOException e) {
+            this.graph = new DirectedGraph();
+        }
+    }
+
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
             try {
-                new TextGraphApp().initialize();
+                new Main().initialize();
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -99,7 +110,7 @@ public class TextGraphApp {
         JButton pageRankButton = new JButton("计算PageRank");
         pageRankButton.addActionListener(e -> showPageRank());
         // buttonPanel.add(pageRankButton);
-        
+
         JToggleButton toggleButton = new JToggleButton("生成图", false);
         toggleButton.addActionListener(e -> {
             generatePageRankGraph = toggleButton.isSelected();
@@ -161,7 +172,7 @@ public class TextGraphApp {
         }
     }
 
-    private void loadFile() {
+    public void loadFile() {
         String filePath = filePathField.getText();
         if (filePath.isEmpty()) {
             showMessage("请选择或输入文件路径");
@@ -182,6 +193,10 @@ public class TextGraphApp {
         } catch (IOException e) {
             showMessage("读取文件错误: " + e.getMessage());
         }
+    }
+
+    public DirectedGraph getGraph() {
+        return this.graph;
     }
 
     private String readFile(String filePath) throws IOException {
@@ -243,6 +258,10 @@ public class TextGraphApp {
 
         word1 = word1.toLowerCase();
         word2 = word2.toLowerCase();
+
+        if( word1.isEmpty() || word2.isEmpty() ){
+            return "Input Error!";
+        }
 
         if (!graph.containsNode(word1) || !graph.containsNode(word2)) {
             return "No " + word1 + " or " + word2 + " in the graph!";
@@ -332,6 +351,10 @@ public class TextGraphApp {
         word1 = word1.toLowerCase();
         word2 = word2.toLowerCase();
 
+        if (word1.isEmpty()) {
+            return "请输入至少一个单词";
+        }
+
         if (!graph.containsNode(word1)) {
             return "No " + word1 + " in the graph!";
         }
@@ -418,11 +441,11 @@ public class TextGraphApp {
             showMessage("请先加载文件构建图");
             return;
         }
-    
+
         Map<String, Double> pageRanks = graph.calculatePageRank();
         List<Map.Entry<String, Double>> sorted = new ArrayList<>(pageRanks.entrySet());
         sorted.sort((e1, e2) -> e2.getValue().compareTo(e1.getValue()));
-    
+
         StringBuilder result = new StringBuilder("PageRank 结果 (Top 20):\n");
         int count = 0;
         for (Map.Entry<String, Double> entry : sorted) {
@@ -431,13 +454,13 @@ public class TextGraphApp {
             result.append(String.format("%s: %.6f\n", entry.getKey(), entry.getValue()));
         }
         showMessage(result.toString());
-    
+
         // 只有当开关打开时才生成图
         if (generatePageRankGraph) {
             try {
                 GraphVisualizer.visualizePageRank(graph, graphImagePath, pageRanks);
                 showMessage("PageRank图已更新: " + graphImagePath);
-    
+
                 // 尝试用默认图片查看器打开
                 if (Desktop.isDesktopSupported()) {
                     Desktop.getDesktop().open(new File(graphImagePath));
@@ -627,9 +650,9 @@ class DirectedGraph {
     }
 
     private void reconstructPaths(String start, String current,
-            Map<String, List<String>> predecessors,
-            List<String> currentPath,
-            List<List<String>> paths) {
+                                  Map<String, List<String>> predecessors,
+                                  List<String> currentPath,
+                                  List<List<String>> paths) {
         currentPath.add(current);
 
         if (current.equals(start)) {
@@ -665,7 +688,7 @@ class DirectedGraph {
         Set<String> nodes = getAllNodes();
         int nodeCount = nodes.size();
         if (nodeCount == 0) return Collections.emptyMap();
-    
+
         // 预处理阶段 - 只执行一次
         // 1. 建立节点到索引的映射
         List<String> nodeList = new ArrayList<>(nodes);
@@ -673,16 +696,16 @@ class DirectedGraph {
         for (int i = 0; i < nodeList.size(); i++) {
             nodeIndexMap.put(nodeList.get(i), i);
         }
-    
+
         // 2. 预先计算每个节点的入边列表和出度
         List<List<Integer>> incomingEdges = new ArrayList<>(nodeCount);
         int[] outDegree = new int[nodeCount];
         List<Integer> danglingNodes = new ArrayList<>();
-    
+
         for (int i = 0; i < nodeCount; i++) {
             incomingEdges.add(new ArrayList<>());
         }
-    
+
         for (int i = 0; i < nodeCount; i++) {
             String node = nodeList.get(i);
             Map<String, Integer> edges = adjacencyList.getOrDefault(node, Collections.emptyMap());
@@ -690,51 +713,51 @@ class DirectedGraph {
             if (outDegree[i] == 0) {
                 danglingNodes.add(i);
             }
-            
+
             // 建立入边索引
             for (String to : edges.keySet()) {
                 int toIndex = nodeIndexMap.get(to);
                 incomingEdges.get(toIndex).add(i);
             }
         }
-    
+
         // 3. 初始化PageRank值
         double[] pr = new double[nodeCount];
         double initialValue = 1.0 / nodeCount;
         Arrays.fill(pr, initialValue);
-    
+
         // 迭代参数
         double dampingFactor = 0.85;
         double constantTerm = (1 - dampingFactor) / nodeCount;
         int maxIterations = 100;
         double convergenceThreshold = 0.0001;
         boolean hasConverged = false;
-    
+
         // 迭代计算
         for (int iter = 0; iter < maxIterations && !hasConverged; iter++) {
             double[] newPr = new double[nodeCount];
             double danglingSum = 0.0;
-    
+
             // 计算悬挂节点贡献
             for (int i : danglingNodes) {
                 danglingSum += pr[i];
             }
             danglingSum /= nodeCount;
-    
+
             // 计算每个节点的新PR值
             for (int i = 0; i < nodeCount; i++) {
                 double sum = 0.0;
-                
+
                 // 遍历所有入边节点
                 for (int j : incomingEdges.get(i)) {
                     if (outDegree[j] > 0) {
                         sum += pr[j] / outDegree[j];
                     }
                 }
-                
+
                 newPr[i] = constantTerm + dampingFactor * (sum + danglingSum);
             }
-    
+
             // 检查收敛
             hasConverged = true;
             for (int i = 0; i < nodeCount; i++) {
@@ -743,17 +766,17 @@ class DirectedGraph {
                     break;
                 }
             }
-    
+
             // 更新PR值
             pr = newPr;
         }
-    
+
         // 转换为结果Map
         Map<String, Double> result = new HashMap<>(nodeCount);
         for (int i = 0; i < nodeCount; i++) {
             result.put(nodeList.get(i), pr[i]);
         }
-    
+
         return result;
     }
 
@@ -805,7 +828,7 @@ class GraphVisualizer {
     }
 
     public static void visualizeShortestPaths(DirectedGraph graph, String outputPath,
-            List<List<String>> paths) throws IOException {
+                                              List<List<String>> paths) throws IOException {
         StringBuilder dot = new StringBuilder();
         dot.append("digraph G {\n");
         dot.append("  rankdir=LR;\n");
@@ -860,7 +883,7 @@ class GraphVisualizer {
     }
 
     public static void visualizePageRank(DirectedGraph graph, String outputPath,
-            Map<String, Double> pageRanks) throws IOException {
+                                         Map<String, Double> pageRanks) throws IOException {
         // 归一化PageRank值用于节点大小
         double maxRank = pageRanks.values().stream().max(Double::compare).orElse(1.0);
         double minRank = pageRanks.values().stream().min(Double::compare).orElse(0.0);
